@@ -3,8 +3,7 @@ pyvna
 
 Enclosed is a Python3 library for performing Vector Network Analyzer 
 measurements using various computer controlled VNAs.  The 
-library is intended to be with Jupyter Notebook.  
-The library supports SOLT calibration as well as plotting.
+library is intended to be with Jupyter Notebook.  The library supports SOLT calibration as well as plotting.
 
 Please see the sample Jupyter Notebooks in the repo for examples
 of use.
@@ -14,9 +13,7 @@ Devices
 
 At the moment only the RigExpert AA-30,
 and MiniVNA Tiny devices are supported.  The NWT500 is also supported
-but it untested.  
-
-Each device has an associated driver.
+but it untested.  Each device has an associated driver.
 For example the Zero's driver is located in device\_zero.py.
 If you want to create a driver please do.
 
@@ -71,11 +68,9 @@ The library also supports thru, thrumatch, crosstalk calibration.
 In addition the library has the ability to measure in real time
 response (S21), enhanced response (S21 off a prior S11M() measurement
 run), and a forward path measurement (S11 and S21).
-
 A full two port measurement is supported by running the four measurements,
-S11M(), S21M(), S21M(), and S22M().  
-Calling the method two\_port() afterwards will return the corrected
-two port results.
+S11M(), S21M(), S21M(), and S22M().  Calling the method 
+two\_port() afterwards will return the corrected two port results.
 
 Unfortunately these features are relatively untested at the moment.  
 
@@ -86,7 +81,7 @@ Normally the device to use is set using the init() method as
 shown above.
 
 But as a convenience, the default device to use can be set in the 
-configuration file, device.conf.  
+configuration file, device.conf.
 You do this by setting the 'name' option under the [device] heading.
 Options specific to a particular device are set under that
 device's name as a heading.  
