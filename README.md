@@ -11,7 +11,7 @@ of use.
 Devices
 ---------------------
 
-At the moment only the RigExpert AA-30,
+At the moment only the RigExpert AA-30 Zero,
 and MiniVNA Tiny devices are supported.  The NWT500 is also supported
 but it untested.  Each device has an associated driver.
 For example the Zero's driver is located in device\_zero.py.
