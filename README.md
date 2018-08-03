@@ -9,7 +9,7 @@ The library supports SOLT calibration as well as plotting.
 Please see the Jupyter Notebook \*.ipynb files in the repo for examples
 of use.
 
-See documentation [here][README.ipynb]
+See documentation [here](README.ipynb)
 
 
 
