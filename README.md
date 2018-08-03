@@ -3,9 +3,9 @@ pyvna
 
 Enclosed is a Python3 library for performing Vector Network Analyzer 
 measurements using various computer controlled VNAs.  The 
-library is intended to be with Jupyter Notebook.  The library supports SOLT calibration as well as plotting.
+library is intended to be used with Jupyter Notebook.  The library supports SOLT calibration as well as plotting.
 
-Please see the sample Jupyter Notebooks in the repo for examples
+Please see the Jupyter Notebook \*.ipynb files in the repo for examples
 of use.
 
 Devices
@@ -37,10 +37,12 @@ to its highest.
      cal = vna.create()
 
 Next you need to calibrate the VNA.  At the moment only
-SOLT calibration is supported.  If you want to measure
-S11 you need to calibrate against a open, short, and load
-standard.  This is done by passing the created calibration object
-to the cal\_open(), cal\_short(), and cal\_load() methods.  For example:
+SOLT calibration is supported.  For example, to measure
+S11, first calibrate against a open, short, and load
+standard then run the return loss measurement.  
+
+Calibration is done by 
+passing the created calibration object to the cal\_open(), cal\_short(), and cal\_load() methods.
 
      gm = vna.cal_open(cal)
      gm = vna.cal_short(cal)
@@ -48,7 +50,7 @@ to the cal\_open(), cal\_short(), and cal\_load() methods.  For example:
 
 All these methods return the raw gamma values from the VNA 
 which can be ploted in Jupyter Notebook with the helper
-methods plot(), bode(), cartesian(), and polar().  For example:
+methods plot(), bode(), cartesian(), and polar().
 
      vna.polar(gm)
      vna.bode(gm)
@@ -56,9 +58,9 @@ methods plot(), bode(), cartesian(), and polar().  For example:
 To run the return loss measurement use the method return\_loss()
 passing the calibration object.
 
-     gm = vna.return_loss(cal)
-     vna.polar(gm)
-     vna.bode(gm)
+     g = vna.return_loss(cal)
+     vna.polar(g)
+     vna.bode(g)
 
 
 Other features
@@ -69,7 +71,7 @@ In addition the library has the ability to measure in real time
 response (S21), enhanced response (S21 off a prior S11M() measurement
 run), and a forward path measurement (S11 and S21).
 A full two port measurement is supported by running the four measurements,
-S11M(), S21M(), S21M(), and S22M().  Calling the method 
+S11M(), S21M(), S21M(), and S22M(); calling the method 
 two\_port() afterwards will return the corrected two port results.
 
 Unfortunately these features are relatively untested at the moment.  
