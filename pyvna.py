@@ -175,61 +175,61 @@ def reflection(cal, name, average=3, window=3, reverse=False):
 
 ## calibrate
 
-def cal_open(cal, average=3, window=3, reverse=False):
-    return reflection(cal, 'open', average=average, window=window, reverse=reverse)
+def cal_open(cal, **kw):
+    return reflection(cal, 'open', **kw)
 
-def cal_short(cal, average=3, window=3, reverse=False):
-    return reflection(cal, 'short', average=average, window=window, reverse=reverse)
+def cal_short(cal, **kw):
+    return reflection(cal, 'short', **kw)
 
-def cal_load(cal, average=3, window=3, reverse=False):
-    return reflection(cal, 'load', average=average, window=window, reverse=reverse)
+def cal_load(cal, **kw):
+    return reflection(cal, 'load', **kw)
 
-def cal_thru(cal, average=3, window=3, reverse=False):
-    return transmission(cal, 'thru', average=average, window=window, reverse=reverse)
+def cal_thru(cal, **kw):
+    return transmission(cal, 'thru', **kw)
 
-def cal_thrumatch(cal, average=3, window=3, reverse=False):
-    return transmission(cal, 'thrumatch', average=average, window=window, reverse=reverse)
+def cal_thrumatch(cal, **kw):
+    return transmission(cal, 'thrumatch', **kw)
 
-def cal_crosstalk(cal, average=3, window=3, reverse=False):
-    return transmission(cal, 'crosstalk', average=average, window=window, reverse=reverse)
+def cal_crosstalk(cal, **kw):
+    return transmission(cal, 'crosstalk', **kw)
 
 
 # measure
 
-def S11M(cal, average=3, window=3):
-    return reflection(cal, 'S11M', average=average, window=window, reverse=False)
+def S11M(cal, **kw):
+    return reflection(cal, 'S11M', reverse=False, **kw)
 
-def S21M(cal, average=3, window=3):
-    return transmission(cal, 'S21M', average=average, window=window, reverse=False)
+def S21M(cal, **kw):
+    return transmission(cal, 'S21M', reverse=False, **kw)
 
-def S22M(cal, average=3, window=3):
-    return reflection(cal, 'S11M', average=average, window=window, reverse=True).rename('S22M')
+def S22M(cal, **kw):
+    return reflection(cal, 'S11M', reverse=True, **kw).rename('S22M')
 
-def S12M(cal, average=3, window=3):
-    return transmission(cal, average=average, window=window, reverse=True).rename('S12M')
+def S12M(cal, **kw):
+    return transmission(cal, 'S21M', reverse=True, **kw).rename('S12M')
 
 
 # real-time corrected measurements
 
-def return_loss(cal, average=3, window=3, reverse=False):
-    gm = reflection(cal, 'S11M', average=average, window=window, reverse=reverse)
-    return cal.return_loss(gm, reverse=reverse)
+def return_loss(cal, **kw):
+    gm = reflection(cal, 'S11M', **kw)
+    return cal.return_loss(gm, reverse=kw.get('reverse'))
 
-def response(cal, average=3, window=3, reverse=False):
-    gm = transmission(cal, 'S21M', average=average, window=window, reverse=reverse)
-    return cal.response(gm, reverse=reverse)
+def response(cal, **kw):
+    gm = transmission(cal, 'S21M', **kw)
+    return cal.response(gm, reverse=kw.get('reverse'))
 
-def enhanced_response(self, average=3, window=3, reverse=False):
-    gm = transmission(cal, 'S21M', average=average, window=window, reverse=reverse)
-    return cal.enhanced_response(gm, reverse=reverse)
+def enhanced_response(cal, **kw):
+    gm = transmission(cal, 'S21M', **kw)
+    return cal.enhanced_response(gm, reverse=kw.get('reverse'))
 
-def forward_path(cal, average=3, window=3, reverse=False):
-    grl = return_loss(cal, average=average, window=window, reverse=reverse)
-    ger = enhanced_response(cal, average=average, window=window, reverse=reverse)
+def forward_path(cal, **kw):
+    gloss = return_loss(cal, **kw)
+    gresp = enhanced_response(cal, **kw)
     df = pd.DataFrame(index=cal.index)
     df.name = 'Forward Parameters'
-    df['S22' if reverse else 'S11'] = grl
-    df['S12' if reverse else 'S21'] = ger
+    df[gloss.name] = gloss
+    df[gresp.name] = gresp
     return df
 
 
