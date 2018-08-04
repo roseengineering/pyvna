@@ -96,7 +96,6 @@ class Driver():
         port = options.get('port', default_port)
         baudrate = int(options.get('baudrate', default_baudrate))
         self.fd = Serial(port, baudrate)
-        self.version()
 
     def close(self):
         self.fd.close()
@@ -105,7 +104,6 @@ class Driver():
         fd = self.fd
         fd.close()
         fd.open()
-        self.version()
 
     def version(self):
         fd = self.fd

@@ -90,8 +90,6 @@ class Driver():
     def temperature(self):
         pass
 
-    ##
-
     def reflection(self, index, reverse=None):
         return gamma(self.fd, index)
 

@@ -121,13 +121,16 @@ class SOLTCalibration:
 
 def init(**args):
     manager.init(**args)
-    return manager.driver.version()
+    return version()
 
 def version():
     return manager.driver.version()
 
 def temperature():
     return manager.driver.temperature()
+
+def reset():
+    manager.driver.reset()
 
 def close():
     manager.close()
