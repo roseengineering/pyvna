@@ -9,7 +9,7 @@ The NWT500 is also supported but untested.
 Please see the Jupyter Notebook \*.ipynb files in the repo for examples
 of use.
 
-The documentation is located [here](README.ipynb)
+The documentation is located [here in a Jupyter Notebook](README.ipynb)
 
 
 
