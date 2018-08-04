@@ -106,11 +106,11 @@ class SOLTCalibration:
         D = (1 + N11 * e11) * (1 + N22 * e22r) - N21 * N12 * e22 * e11r
 
         df = pd.DataFrame(index=self.index)
+        df.name = 'Two Port Parameters'
         df['S11'] = (N11 * (1 + N22 * e22r) - e22 * N21 * N12) / D
         df['S21'] = (N21 * (1 + N22 * (e22r - e22))) / D
         df['S22'] = (N22 * (1 + N11 * e11) - e11r * N21 * N12) / D
         df['S12'] = (N12 * (1 + N11 * (e11 - e11r))) / D
-        df.name = 'Two Port Parameters'
         return df
  
 
@@ -154,97 +154,82 @@ def create(start=None, stop=None, points=None, calibration=SOLTCalibration):
 
 ## measurements
 
-def transmission(cal, average=3, window=3, reverse=False):
+def transmission(cal, name, average=3, window=3, reverse=False):
     gm = pd.Series(0, cal.index)
     for i in range(average):
         gm += manager.driver.transmission(cal.index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
+    gm = cal.update(gm, name, reverse=reverse)
     return gm
 
-def reflection(cal, average=3, window=3, reverse=False):
+def reflection(cal, name, average=3, window=3, reverse=False):
     gm = pd.Series(0, cal.index)
     for i in range(average):
         gm += manager.driver.reflection(cal.index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
+    gm = cal.update(gm, name, reverse=reverse)
     return gm
 
 
 ## calibrate
 
 def cal_open(cal, average=3, window=3, reverse=False):
-    gm = reflection(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'open', reverse=reverse)
+    return reflection(cal, 'open', average=average, window=window, reverse=reverse)
 
 def cal_short(cal, average=3, window=3, reverse=False):
-    gm = reflection(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'short', reverse=reverse)
+    return reflection(cal, 'short', average=average, window=window, reverse=reverse)
 
 def cal_load(cal, average=3, window=3, reverse=False):
-    gm = reflection(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'load', reverse=reverse)
+    return reflection(cal, 'load', average=average, window=window, reverse=reverse)
 
 def cal_thru(cal, average=3, window=3, reverse=False):
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'thru', reverse=reverse)
+    return transmission(cal, 'thru', average=average, window=window, reverse=reverse)
 
 def cal_thrumatch(cal, average=3, window=3, reverse=False):
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'thrumatch', reverse=reverse)
+    return transmission(cal, 'thrumatch', average=average, window=window, reverse=reverse)
 
 def cal_crosstalk(cal, average=3, window=3, reverse=False):
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'crosstalk', reverse=reverse)
+    return transmission(cal, 'crosstalk', average=average, window=window, reverse=reverse)
 
 
 # measure
 
 def S11M(cal, average=3, window=3):
-    reverse = False
-    gm = reflection(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'S11M', reverse=reverse)
+    return reflection(cal, 'S11M', average=average, window=window, reverse=False)
 
 def S21M(cal, average=3, window=3):
-    reverse = False
-    gm = transmission(cal, average=average, window=window, reverse=False)
-    return cal.update(gm, 'S21M', reverse=reverse)
+    return transmission(cal, 'S21M', average=average, window=window, reverse=False)
 
 def S22M(cal, average=3, window=3):
-    reverse = True
-    gm = reflection(cal, average=average, window=window, reverse=True)
-    return cal.update(gm, 'S11M', reverse=reverse).rename('S22M')
+    return reflection(cal, 'S11M', average=average, window=window, reverse=True).rename('S22M')
 
 def S12M(cal, average=3, window=3):
-    reverse = True
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'S21M', reverse=reverse).rename('S12M')
+    return transmission(cal, average=average, window=window, reverse=True).rename('S12M')
 
 
 # real-time corrected measurements
 
 def return_loss(cal, average=3, window=3, reverse=False):
-    gm = reflection(cal, average=average, window=window, reverse=reverse)
-    cal.update(gm, 'S11M', reverse=reverse)
+    gm = reflection(cal, 'S11M', average=average, window=window, reverse=reverse)
     return cal.return_loss(gm, reverse=reverse)
 
 def response(cal, average=3, window=3, reverse=False):
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    cal.update(gm, 'S21M', reverse=reverse)
+    gm = transmission(cal, 'S21M', average=average, window=window, reverse=reverse)
     return cal.response(gm, reverse=reverse)
 
 def enhanced_response(self, average=3, window=3, reverse=False):
-    gm = transmission(cal, average=average, window=window, reverse=reverse)
-    cal.update(gm, 'S21M', reverse=reverse)
+    gm = transmission(cal, 'S21M', average=average, window=window, reverse=reverse)
     return cal.enhanced_response(gm, reverse=reverse)
 
 def forward_path(cal, average=3, window=3, reverse=False):
+    grl = return_loss(cal, average=average, window=window, reverse=reverse)
+    ger = enhanced_response(cal, average=average, window=window, reverse=reverse)
     df = pd.DataFrame(index=cal.index)
-    name = 'S22' if reverse else 'S11'
-    df[name] = return_loss(cal, average=average, window=window, reverse=reverse)
-    name = 'S12' if reverse else 'S21'
-    df[name] = enhanced_response(cal, average=average, window=window, reverse=reverse)
     df.name = 'Forward Parameters'
+    df['S22' if reverse else 'S11'] = grl
+    df['S12' if reverse else 'S21'] = ger
     return df
 
 
