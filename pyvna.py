@@ -37,7 +37,7 @@ class SOLTCalibration:
     """ 
 
     def __init__(self, index):
-        columns = ['S11M', 'S21M', 'load', 'open', 'short', 'thru', 'match', 'crosstalk']
+        columns = ['S11M', 'S21M', 'load', 'open', 'short', 'thru', 'thrumatch', 'crosstalk']
         data = [(0, 0, 0, 1, -1, 0, 0, 0)] 
         self.index = index
         self.forward = pd.DataFrame(data, columns=columns, index=index)
@@ -57,7 +57,7 @@ class SOLTCalibration:
         df['e10e01'] = -2 * (gmo - df['e00']) * (gms - df['e00']) / (gmo - gms)
         df['de'] = df['e00'] * df['e11'] - df['e10e01']
         df['e30'] = df['crosstalk']
-        df['e22'] = (df['match'] - df['e00']) / (df['match'] * df['e11'] - df['de'])
+        df['e22'] = (df['thrumatch'] - df['e00']) / (df['thrumatch'] * df['e11'] - df['de'])
         df['e10e32'] = (df['thru'] - df['e30']) * (1 - df['e11'] * df['e22'])
 
     def update(self, gm, name, reverse=False):
@@ -103,15 +103,14 @@ class SOLTCalibration:
         N21 = (S21M - e30) / e10e32
         N22 = (S22M - e33r) / e23re32r
         N12 = (S12M - e03r) / e23re01r
-
         D = (1 + N11 * e11) * (1 + N22 * e22r) - N21 * N12 * e22 * e11r
 
         df = pd.DataFrame(index=self.index)
-        df.name = 'Two Port Parameters'
         df['S11'] = (N11 * (1 + N22 * e22r) - e22 * N21 * N12) / D
         df['S21'] = (N21 * (1 + N22 * (e22r - e22))) / D
         df['S22'] = (N22 * (1 + N11 * e11) - e11r * N21 * N12) / D
         df['S12'] = (N12 * (1 + N11 * (e11 - e11r))) / D
+        df.name = 'Two Port Parameters'
         return df
  
 
@@ -192,7 +191,7 @@ def cal_thru(cal, average=3, window=3, reverse=False):
 
 def cal_thrumatch(cal, average=3, window=3, reverse=False):
     gm = transmission(cal, average=average, window=window, reverse=reverse)
-    return cal.update(gm, 'match', reverse=reverse)
+    return cal.update(gm, 'thrumatch', reverse=reverse)
 
 def cal_crosstalk(cal, average=3, window=3, reverse=False):
     gm = transmission(cal, average=average, window=window, reverse=reverse)
@@ -202,20 +201,24 @@ def cal_crosstalk(cal, average=3, window=3, reverse=False):
 # measure
 
 def S11M(cal, average=3, window=3):
-    gm = reflection(cal, average=average, window=window, reverse=False)
-    return cal.update(gm, 'S11M')
+    reverse = False
+    gm = reflection(cal, average=average, window=window, reverse=reverse)
+    return cal.update(gm, 'S11M', reverse=reverse)
 
 def S21M(cal, average=3, window=3):
+    reverse = False
     gm = transmission(cal, average=average, window=window, reverse=False)
-    return cal.update(gm, 'S21M')
+    return cal.update(gm, 'S21M', reverse=reverse)
 
 def S22M(cal, average=3, window=3):
+    reverse = True
     gm = reflection(cal, average=average, window=window, reverse=True)
-    return cal.update(gm, 'S11M', True).rename('S22M')
+    return cal.update(gm, 'S11M', reverse=reverse).rename('S22M')
 
 def S12M(cal, average=3, window=3):
-    gm = transmission(cal, average=average, window=window, reverse=True)
-    return cal.update(df, 'S21M', True).rename('S12M')
+    reverse = True
+    gm = transmission(cal, average=average, window=window, reverse=reverse)
+    return cal.update(gm, 'S21M', reverse=reverse).rename('S12M')
 
 
 # real-time corrected measurements
@@ -233,15 +236,15 @@ def response(cal, average=3, window=3, reverse=False):
 def enhanced_response(self, average=3, window=3, reverse=False):
     gm = transmission(cal, average=average, window=window, reverse=reverse)
     cal.update(gm, 'S21M', reverse=reverse)
-    return cal.enhanced_response(df, reverse=reverse)
+    return cal.enhanced_response(gm, reverse=reverse)
 
 def forward_port(cal, average=3, window=3, reverse=False):
     df = pd.DataFrame(index=cal.index)
+    name = 'S22' if reverse else 'S11'
+    df[name] = return_loss(cal, average=average, window=window, reverse=reverse)
+    name = 'S12' if reverse else 'S21'
+    df[name] = enhanced_response(cal, average=average, window=window, reverse=reverse)
     df.name = 'Forward Parameters'
-    df['S22' if reverse else 'S11'] = return_loss(
-        cal, average=average, window=window, reverse=reverse)
-    df['S12' if reverse else 'S21'] = enhanced_response(
-        cal, average=average, window=window, reverse=reverse)
     return df
 
 
