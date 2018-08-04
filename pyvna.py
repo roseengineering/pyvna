@@ -238,7 +238,7 @@ def enhanced_response(self, average=3, window=3, reverse=False):
     cal.update(gm, 'S21M', reverse=reverse)
     return cal.enhanced_response(gm, reverse=reverse)
 
-def forward_port(cal, average=3, window=3, reverse=False):
+def forward_path(cal, average=3, window=3, reverse=False):
     df = pd.DataFrame(index=cal.index)
     name = 'S22' if reverse else 'S11'
     df[name] = return_loss(cal, average=average, window=window, reverse=reverse)
