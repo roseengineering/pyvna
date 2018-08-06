@@ -157,73 +157,73 @@ def create(start=None, stop=None, points=None, calibration=SOLTCalibration):
 
 ## measurements
 
-def transmission(cal, name, average=3, window=3, reverse=False):
+def transmission(cal, name=None, average=3, window=3, reverse=False):
     gm = pd.Series(0, cal.index)
     for i in range(average):
         gm += manager.driver.transmission(cal.index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
-    gm = cal.update(gm, name, reverse=reverse)
+    if name: gm = cal.update(gm, name, reverse=reverse)
     return gm
 
-def reflection(cal, name, average=3, window=3, reverse=False):
+def reflection(cal, name=None, average=3, window=3, reverse=False):
     gm = pd.Series(0, cal.index)
     for i in range(average):
         gm += manager.driver.reflection(cal.index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
-    gm = cal.update(gm, name, reverse=reverse)
+    if name: gm = cal.update(gm, name, reverse=reverse)
     return gm
 
 
 ## calibrate
 
 def cal_open(cal, **kw):
-    return reflection(cal, 'open', **kw)
+    return reflection(cal, name='open', **kw)
 
 def cal_short(cal, **kw):
-    return reflection(cal, 'short', **kw)
+    return reflection(cal, name='short', **kw)
 
 def cal_load(cal, **kw):
-    return reflection(cal, 'load', **kw)
+    return reflection(cal, name='load', **kw)
 
 def cal_thru(cal, **kw):
-    return transmission(cal, 'thru', **kw)
+    return transmission(cal, name='thru', **kw)
 
 def cal_thrumatch(cal, **kw):
-    return transmission(cal, 'thrumatch', **kw)
+    return transmission(cal, name='thrumatch', **kw)
 
 def cal_crosstalk(cal, **kw):
-    return transmission(cal, 'crosstalk', **kw)
+    return transmission(cal, name='crosstalk', **kw)
 
 
 # measure
 
 def S11M(cal, **kw):
-    return reflection(cal, 'S11M', reverse=False, **kw)
+    return reflection(cal, name='S11M', reverse=False, **kw)
 
 def S21M(cal, **kw):
-    return transmission(cal, 'S21M', reverse=False, **kw)
+    return transmission(cal, name='S21M', reverse=False, **kw)
 
 def S22M(cal, **kw):
-    return reflection(cal, 'S11M', reverse=True, **kw).rename('S22M')
+    return reflection(cal, name='S11M', reverse=True, **kw).rename('S22M')
 
 def S12M(cal, **kw):
-    return transmission(cal, 'S21M', reverse=True, **kw).rename('S12M')
+    return transmission(cal, name='S21M', reverse=True, **kw).rename('S12M')
 
 
 # real-time corrected measurements
 
 def return_loss(cal, **kw):
-    gm = reflection(cal, 'S11M', **kw)
+    gm = reflection(cal, name='S11M', **kw)
     return cal.return_loss(gm, reverse=kw.get('reverse'))
 
 def response(cal, **kw):
-    gm = transmission(cal, 'S21M', **kw)
+    gm = transmission(cal, name='S21M', **kw)
     return cal.response(gm, reverse=kw.get('reverse'))
 
 def enhanced_response(cal, **kw):
-    gm = transmission(cal, 'S21M', **kw)
+    gm = transmission(cal, name='S21M', **kw)
     return cal.enhanced_response(gm, reverse=kw.get('reverse'))
 
 def forward_path(cal, **kw):
