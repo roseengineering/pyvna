@@ -158,7 +158,7 @@ def create(start=None, stop=None, points=None, calibration=SOLTCalibration):
 ## measurements
 
 def transmission(cal, name=None, average=3, window=3, reverse=False):
-    gm = pd.Series(0, cal.index)
+    gm = pd.Series(0, cal.index, name='')
     for i in range(average):
         gm += manager.driver.transmission(cal.index, reverse=reverse)
     gm = gm / average
@@ -167,7 +167,7 @@ def transmission(cal, name=None, average=3, window=3, reverse=False):
     return gm
 
 def reflection(cal, name=None, average=3, window=3, reverse=False):
-    gm = pd.Series(0, cal.index)
+    gm = pd.Series(0, cal.index, name='')
     for i in range(average):
         gm += manager.driver.reflection(cal.index, reverse=reverse)
     gm = gm / average
