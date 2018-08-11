@@ -36,19 +36,26 @@ class SOLTCalibration:
     b0 o--<--+-----<-----+--<--+-----<-----+--<--+-----<-----+--<--o a3
     """ 
 
-    def __init__(self, index):
-        columns = ['S11M', 'S21M', 'load', 'open', 'short', 'thru', 'thrumatch', 'crosstalk']
-        data = [(0, 0, 0, 1, -1, 0, 0, 0)] 
+    def __init__(self, index, resample=None):
+        columns = [
+            'S11M', 'load', 'open', 'short', 
+            'S21M', 'thru', 'thrumatch', 'crosstalk'
+        ]
+        if resample:
+            ix = resample.forward.index.union(index)
+            forward = resample.forward.reindex(ix).interpolate().reindex(index)
+            reverse = resample.reverse.reindex(ix).interpolate().reindex(index)
+        else:
+            data = [(0, 0, 0, 1, -1, 0, 0, 0)] 
+            forward = pd.DataFrame(data, columns=columns, index=index)
+            reverse = pd.DataFrame(data, columns=columns, index=index)
+        self.forward = forward
+        self.reverse = reverse
         self.index = index
-        self.forward = pd.DataFrame(data, columns=columns, index=index)
-        self.reverse = pd.DataFrame(data, columns=columns, index=index)
-        self.calibrate() 
-        self.calibrate(reverse=True) 
+        self.recalibrate(reverse=False) 
+        self.recalibrate(reverse=True) 
 
-
-    # calculate error terms
-
-    def calibrate(self, reverse=False):
+    def recalibrate(self, reverse=False):
         df = self.reverse if reverse else self.forward
         gmo = df['open']
         gms = df['short'] 
@@ -60,11 +67,13 @@ class SOLTCalibration:
         df['e22'] = (df['thrumatch'] - df['e00']) / (df['thrumatch'] * df['e11'] - df['de'])
         df['e10e32'] = (df['thru'] - df['e30']) * (1 - df['e11'] * df['e22'])
 
+    # update error terms
+
     def update(self, gm, name, reverse=False):
         df = self.reverse if reverse else self.forward
         gm.name = name
         df[name] = gm
-        self.calibrate(reverse=reverse)
+        self.recalibrate(reverse=reverse)
         return gm
 
 
@@ -138,21 +147,23 @@ def close():
 
 # instantiate calibration object
         
-def create(start=None, stop=None, points=None, calibration=SOLTCalibration):
+def create(start=None, stop=None, points=None, resample=None):
     driver = manager.driver
     start = driver.min_freq if start is None else start
     stop = driver.max_freq if stop is None else stop
     points = driver.default_points if points is None else points
-    step = (stop - start) // points
 
     if start > stop or stop > driver.max_freq or start < driver.min_freq: 
         raise ValueError("bad frequency range")
     if points > driver.max_points or points < 1:
         raise ValueError("bad number of points")
+
+    step = (stop - start) // points
     if step < 1:
         raise ValueError("step size too small")
+
     index = np.array([int(start + i * step) for i in range(points + 1)])
-    return calibration(index)
+    return SOLTCalibration(index, resample=resample)
 
 
 ## measurements
