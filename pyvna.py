@@ -95,10 +95,6 @@ class SOLTCalibration:
     def index(self):
         return self.df.loc['forward'].index
 
-    def path(self, reverse=False):
-        key = 'reverse' if reverse else 'forward'
-        return self.df.loc[key]
-
     def save(self, filename):
         self.df.to_csv(filename)
         return self
@@ -106,17 +102,17 @@ class SOLTCalibration:
     # real-time
 
     def return_loss(self, gm, reverse=False):
-        df = self.path(reverse=reverse)
+        df = self.df.loc['reverse' if reverse else 'forward']
         gamma = (gm - df['e00']) / (gm * df['e11'] - df['de'])
         return gamma.rename('S22' if reverse else 'S11')
 
     def response(self, gm, reverse=False):
-        df = self.path(reverse=reverse)
+        df = self.df.loc['reverse' if reverse else 'forward']
         gamma = gm / df['e10e32']
         return gamma.rename('S12' if reverse else 'S21')
 
     def enhanced_response(self, gm, reverse=False):
-        df = self.path(reverse=reverse)
+        df = self.df.loc['reverse' if reverse else 'forward']
         gamma = gm / df['e10e32'] * (df['e10e01'] / (df['e11'] * df['S11M'] - df['de']))
         return gamma.rename('S12' if reverse else 'S21')
         
@@ -242,27 +238,26 @@ def S21M(cal, **kw):
     return transmission(cal, name='S21M', reverse=False, **kw)
 
 def S22M(cal, **kw):
-    return reflection(cal, name='S11M', reverse=True, **kw).rename('S22M')
+    gm = reflection(cal, name='S11M', reverse=True, **kw)
+    return gm.rename('S22M')
 
 def S12M(cal, **kw):
-    return transmission(cal, name='S21M', reverse=True, **kw).rename('S12M')
+    gm = transmission(cal, name='S21M', reverse=True, **kw)
+    return gm.rename('S12M')
 
 # real-time corrected measurements
 
 def return_loss(cal, **kw):
-    reverse = kw.get('reverse')
     gm = reflection(cal, name='S11M', **kw)
-    return cal.return_loss(gm, reverse=reverse)
+    return cal.return_loss(gm, reverse=kw.get('reverse'))
 
 def response(cal, **kw):
-    reverse = kw.get('reverse')
     gm = transmission(cal, name='S21M', **kw)
-    return cal.response(gm, reverse=reverse)
+    return cal.response(gm, reverse=kw.get('reverse'))
 
 def enhanced_response(cal, **kw):
-    reverse = kw.get('reverse')
     gm = transmission(cal, name='S21M', **kw)
-    return cal.enhanced_response(gm, reverse=reverse)
+    return cal.enhanced_response(gm, reverse=kw.get('reverse'))
 
 def forward_path(cal, **kw):
     gloss = return_loss(cal, **kw)
