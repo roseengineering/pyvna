@@ -199,8 +199,7 @@ def transmission(cal, name=None, average=3, window=3, reverse=False):
     gm = gm / average
     gm = rolling_mean(gm, window=window)
     if name:
-        gm.name = name 
-        gm = cal.update(gm, reverse=reverse)
+        gm = cal.update(gm.rename(name), reverse=reverse)
     return gm
 
 def reflection(cal, name=None, average=3, window=3, reverse=False):
@@ -211,8 +210,7 @@ def reflection(cal, name=None, average=3, window=3, reverse=False):
     gm = gm / average
     gm = rolling_mean(gm, window=window)
     if name:
-        gm.name = name 
-        gm = cal.update(gm, reverse=reverse)
+        gm = cal.update(gm.rename(name), reverse=reverse)
     return gm
 
 ## calibrate
