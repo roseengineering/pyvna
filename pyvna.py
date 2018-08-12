@@ -36,27 +36,40 @@ class SOLTCalibration:
     b0 o--<--+-----<-----+--<--+-----<-----+--<--+-----<-----+--<--o a3
     """ 
 
-    def __init__(self, index, resample=None):
-        columns = [
-            'S11M', 'load', 'open', 'short', 
-            'S21M', 'thru', 'thrumatch', 'crosstalk'
-        ]
-        if resample:
-            ix = resample.forward.index.union(index)
-            forward = resample.forward.reindex(ix).interpolate().reindex(index)
-            reverse = resample.reverse.reindex(ix).interpolate().reindex(index)
+    @classmethod
+    def load(cls, filename):
+        df = pd.read_csv(filename, index_col=['path', 'index'])
+        df = df.apply(lambda series: series.apply(lambda x: complex(x)))
+        return cls(df=df)
+
+    ####
+
+    def __init__(self, index=None, resample=None, df=None):
+        if df is not None:
+            forward = df.loc['forward']
+            reverse = df.loc['reverse']
+        elif resample:
+            forward = resample.df.loc['forward']
+            reverse = resample.df.loc['reverse']
+            ux = forward.index.union(index)
+            forward = forward.reindex(ux).interpolate().reindex(index)
+            reverse = reverse.reindex(ux).interpolate().reindex(index)
         else:
+            columns = [ 'S11M', 'load', 'open', 'short',
+                        'S21M', 'thru', 'thrumatch', 'crosstalk' ]
             data = [(0, 0, 0, 1, -1, 0, 0, 0)] 
             forward = pd.DataFrame(data, columns=columns, index=index)
             reverse = pd.DataFrame(data, columns=columns, index=index)
-        self.forward = forward
-        self.reverse = reverse
-        self.index = index
-        self.recalibrate(reverse=False) 
-        self.recalibrate(reverse=True) 
 
-    def recalibrate(self, reverse=False):
-        df = self.reverse if reverse else self.forward
+        forward = self.recalibrate(forward)
+        reverse = self.recalibrate(reverse)
+        self.df = pd.concat(
+            [forward, reverse], 
+            names=['path', 'index'],
+            keys=['forward', 'reverse'])
+
+
+    def recalibrate(self, df):
         gmo = df['open']
         gms = df['short'] 
         df['e00'] = df['load']
@@ -64,42 +77,54 @@ class SOLTCalibration:
         df['e10e01'] = -2 * (gmo - df['e00']) * (gms - df['e00']) / (gmo - gms)
         df['de'] = df['e00'] * df['e11'] - df['e10e01']
         df['e30'] = df['crosstalk']
-        df['e22'] = (df['thrumatch'] - df['e00']) / (df['thrumatch'] * df['e11'] - df['de'])
+        df['e22'] = ((df['thrumatch'] - df['e00']) / 
+                     (df['thrumatch'] * df['e11'] - df['de']))
         df['e10e32'] = (df['thru'] - df['e30']) * (1 - df['e11'] * df['e22'])
+        return df
 
-    # update error terms
+    # public
 
-    def update(self, gm, name, reverse=False):
-        df = self.reverse if reverse else self.forward
-        gm.name = name
-        df[name] = gm
-        self.recalibrate(reverse=reverse)
+    def update(self, gm, reverse=False):
+        key = 'reverse' if reverse else 'forward'
+        df = self.df.loc[key].copy()
+        df[gm.name] = gm
+        self.df.loc[key] = self.recalibrate(df).values
         return gm
 
+    @property
+    def index(self):
+        return self.df.loc['forward'].index
+
+    def path(self, reverse=False):
+        key = 'reverse' if reverse else 'forward'
+        return self.df.loc[key]
+
+    def save(self, filename):
+        self.df.to_csv(filename)
+        return self
 
     # real-time
 
     def return_loss(self, gm, reverse=False):
-        df = self.reverse if reverse else self.forward
+        df = self.path(reverse=reverse)
         gamma = (gm - df['e00']) / (gm * df['e11'] - df['de'])
         return gamma.rename('S22' if reverse else 'S11')
 
     def response(self, gm, reverse=False):
-        df = self.reverse if reverse else self.forward
+        df = self.path(reverse=reverse)
         gamma = gm / df['e10e32']
         return gamma.rename('S12' if reverse else 'S21')
 
     def enhanced_response(self, gm, reverse=False):
-        df = self.reverse if reverse else self.forward
+        df = self.path(reverse=reverse)
         gamma = gm / df['e10e32'] * (df['e10e01'] / (df['e11'] * df['S11M'] - df['de']))
         return gamma.rename('S12' if reverse else 'S21')
         
-
     # batch
 
     def two_port(self):
-        forward = self.forward
-        reverse = self.reverse
+        forward = self.df.loc['forward']
+        reverse = self.df.loc['reverse']
 
         S11M, S21M = forward['S11M'], forward['S21M']
         S22M, S12M = reverse['S11M'], reverse['S21M']
@@ -114,7 +139,7 @@ class SOLTCalibration:
         N12 = (S12M - e03r) / e23re01r
         D = (1 + N11 * e11) * (1 + N22 * e22r) - N21 * N12 * e22 * e11r
 
-        df = pd.DataFrame(index=self.index)
+        df = pd.DataFrame()
         df.name = 'Two Port Parameters'
         df['S11'] = (N11 * (1 + N22 * e22r) - e22 * N21 * N12) / D
         df['S21'] = (N21 * (1 + N22 * (e22r - e22))) / D
@@ -144,48 +169,51 @@ def reset():
 def close():
     manager.close()
 
-
-# instantiate calibration object
+# intialize calibration object
         
+def load(filename):
+    return SOLTCalibration.load(filename)
+
 def create(start=None, stop=None, points=None, resample=None):
     driver = manager.driver
     start = driver.min_freq if start is None else start
     stop = driver.max_freq if stop is None else stop
     points = driver.default_points if points is None else points
-
+    step = (stop - start) // points
     if start > stop or stop > driver.max_freq or start < driver.min_freq: 
         raise ValueError("bad frequency range")
     if points > driver.max_points or points < 1:
         raise ValueError("bad number of points")
-
-    step = (stop - start) // points
     if step < 1:
         raise ValueError("step size too small")
-
     index = np.array([int(start + i * step) for i in range(points + 1)])
     return SOLTCalibration(index, resample=resample)
-
 
 ## measurements
 
 def transmission(cal, name=None, average=3, window=3, reverse=False):
-    gm = pd.Series(0, cal.index, name='')
+    index = cal.index
+    gm = pd.Series(0, index, name='')
     for i in range(average):
-        gm += manager.driver.transmission(cal.index, reverse=reverse)
+        gm += manager.driver.transmission(index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
-    if name: gm = cal.update(gm, name, reverse=reverse)
+    if name:
+        gm.name = name 
+        gm = cal.update(gm, reverse=reverse)
     return gm
 
 def reflection(cal, name=None, average=3, window=3, reverse=False):
-    gm = pd.Series(0, cal.index, name='')
+    index = cal.index
+    gm = pd.Series(0, index, name='')
     for i in range(average):
-        gm += manager.driver.reflection(cal.index, reverse=reverse)
+        gm += manager.driver.reflection(index, reverse=reverse)
     gm = gm / average
     gm = rolling_mean(gm, window=window)
-    if name: gm = cal.update(gm, name, reverse=reverse)
+    if name:
+        gm.name = name 
+        gm = cal.update(gm, reverse=reverse)
     return gm
-
 
 ## calibrate
 
@@ -207,7 +235,6 @@ def cal_thrumatch(cal, **kw):
 def cal_crosstalk(cal, **kw):
     return transmission(cal, name='crosstalk', **kw)
 
-
 # measure
 
 def S11M(cal, **kw):
@@ -222,36 +249,36 @@ def S22M(cal, **kw):
 def S12M(cal, **kw):
     return transmission(cal, name='S21M', reverse=True, **kw).rename('S12M')
 
-
 # real-time corrected measurements
 
 def return_loss(cal, **kw):
+    reverse = kw.get('reverse')
     gm = reflection(cal, name='S11M', **kw)
-    return cal.return_loss(gm, reverse=kw.get('reverse'))
+    return cal.return_loss(gm, reverse=reverse)
 
 def response(cal, **kw):
+    reverse = kw.get('reverse')
     gm = transmission(cal, name='S21M', **kw)
-    return cal.response(gm, reverse=kw.get('reverse'))
+    return cal.response(gm, reverse=reverse)
 
 def enhanced_response(cal, **kw):
+    reverse = kw.get('reverse')
     gm = transmission(cal, name='S21M', **kw)
-    return cal.enhanced_response(gm, reverse=kw.get('reverse'))
+    return cal.enhanced_response(gm, reverse=reverse)
 
 def forward_path(cal, **kw):
     gloss = return_loss(cal, **kw)
     gresp = enhanced_response(cal, **kw)
-    df = pd.DataFrame(index=cal.index)
-    df.name = 'Forward Parameters'
+    df = pd.DataFrame()
+    df.name = 'Forward Path'
     df[gloss.name] = gloss
     df[gresp.name] = gresp
     return df
-
 
 # batch corrected measurements
 
 def two_port(cal):
     return cal.two_port()
-
 
 # utilities
 
@@ -287,17 +314,14 @@ def to_quality_factor(gm):
 def to_inductance(x):
     f = x.index.values
     im = x.imag / (2 * np.pi * f)
-    # im = np.maximum(0, im)
     s = pd.Series(x.real + 1j * im, x.index, name=x.name)
     return s.rename(x.name + ' (inductance)')
     
 def to_capacitance(x):
     f = x.index.values
     im = -1 / (2 * np.pi * f * x.imag)
-    # im = np.maximum(0, im)
     s = pd.Series(x.real + 1j * im, x.index, name=x.name)
     return s.rename(x.name + ' (capacitance)')
-
 
 # plot
 
@@ -328,7 +352,6 @@ def bode(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2):
     fig.tight_layout()
     plt.show()
 
-
 def plot(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
@@ -345,7 +368,6 @@ def plot(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2):
     if ylim: ax.set_ylim(ylim[1])
     fig.tight_layout()
     plt.show()
-
 
 def cartesian(gm, figsize=(10, 6), color='r', ylim=None, lw=2):
     import matplotlib.pyplot as plt
