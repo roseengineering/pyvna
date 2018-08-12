@@ -68,6 +68,10 @@ class SOLTCalibration:
             names=['path', 'index'],
             keys=['forward', 'reverse'])
 
+    def __repr__(self):
+        index = self.df.loc['forward'].index
+        return '<%s start=%s, stop=%s, points=%s>' % (
+            self.__class__.__name__, index[0], index[-1], len(index)-1)
 
     def recalibrate(self, df):
         gmo = df['open']
