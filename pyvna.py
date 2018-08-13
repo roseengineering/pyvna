@@ -101,7 +101,6 @@ class SOLTCalibration:
 
     def save(self, filename):
         self.df.to_csv(filename)
-        return self
 
     # real-time
 
@@ -173,6 +172,9 @@ def close():
         
 def load(filename):
     return SOLTCalibration.load(filename)
+
+def save(cal, filename):
+    cal.save(filename)
 
 def create(start=None, stop=None, points=None, resample=None):
     driver = manager.driver
