@@ -334,37 +334,47 @@ def polar(gm, figsize=(6, 6), color='r', rmax=1.0, lw=2):
     fig.tight_layout()
     plt.show()
 
-def bode(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2):
+def bode(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2, log=False):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_title(gm.name)
     ax.set_xlabel('frequency')
+
     ax.plot(gm.index, 10 * np.log10(np.abs(gm)), color[0], lw=lw)
     ax.set_ylabel('gain (db)', color=color[0])
     ax.tick_params('y', colors=color[0])
     if ylim: ax.set_ylim(ylim[0])
+    if log: ax.set_xscale('log')
+
     ax = ax.twinx()
     ax.plot(gm.index, np.degrees(np.angle(gm)), color[1], lw=lw)
     ax.set_ylabel('phase (deg)', color=color[1])
     ax.tick_params('y', colors=color[1])
     if ylim: ax.set_ylim(ylim[1])
+    if log: ax.set_xscale('log')
+
     fig.tight_layout()
     plt.show()
 
-def plot(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2):
+def plot(gm, figsize=(10, 6), color=['r', 'b'], ylim=[], lw=2, log=False):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_title(gm.name)
     ax.set_xlabel('frequency')
+
     ax.plot(gm.index, np.real(gm), color[0], lw=lw)
     ax.set_ylabel('real', color=color[0])
     ax.tick_params('y', colors=color[0])
     if ylim: ax.set_ylim(ylim[0])
+    if log: ax.set_xscale('log')
+
     ax = ax.twinx()
     ax.plot(gm.index, np.imag(gm), color[1], lw=lw)
     ax.set_ylabel('imag', color=color[1])
     ax.tick_params('y', colors=color[1])
     if ylim: ax.set_ylim(ylim[1])
+    if log: ax.set_xscale('log')
+
     fig.tight_layout()
     plt.show()
 
