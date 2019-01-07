@@ -1,1 +1,4 @@
-.ipynb_checkpoints/
+makefile
+archive
+.ipynb_checkpoints
+zip.sh
