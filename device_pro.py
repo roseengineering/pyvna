@@ -5,11 +5,12 @@ from serial import Serial
 import pandas as pd
 import numpy as np
 
-min_freq = 1
-max_freq = int(30e6)
-default_points = 200
+min_freq = int(100e3)
+max_freq = int(200e6)
+default_points = 2000
 
-default_baudrate = 38400
+prescaler = 1000000 / 8259552
+default_baudrate = 115200
 default_port = '/dev/ttyUSB0'
 
 
@@ -22,45 +23,54 @@ def progress(count, total, transmit):
     sys.stdout.flush()
     if count >= total: sys.stdout.write('\n')
 
-def writeln(fd, line):
-    fd.write(line.encode())
-    fd.write(b'\r\n')
+def writeln(fd, buf=''):
+    fd.write(str(buf).encode('latin-1'))
+    fd.write(b'\r')
+
+def read_short(fd):
+    r = fd.read(2)
+    return struct.unpack('<H', r)[0]
 
 def readln(fd):
-    return fd.readline().decode().strip()
+    line = b''
+    while True:
+        ch = fd.read(1)
+        if ch == b'\n': break
+        line += ch
+    return line[:-1].decode('latin-1')
 
-def read_sample(fd, freq):
-    line = readln(fd)
-    d = line.split(',')
-    f = round(float(d[0]) * 1e6)
-    if freq != f: print('WARN', freq, f, freq - f)
-    re = float(d[1])
-    im = float(d[2])
+def read_sample(fd):
+    x1 = read_short(fd)
+    x2 = read_short(fd)
+    x3 = read_short(fd)
+    x4 = read_short(fd)
+    re = x1 - x3
+    im = x2 - x4
     return np.complex(re, im)
-    
+
 def gamma(fd, index, transmit=False):
     start = index[0]
     stop = index[-1]
     points = len(index)
-    zo = np.complex(50)
+    steps = (stop - start) / points
+    max_value = 2**16
 
     # start scan
-    writeln(fd, "fq%d" % ((start + stop) // 2))
-    readln(fd)  # 'OK'
-    writeln(fd, "sw%d" % (stop - start))
-    readln(fd)  # 'OK'
-    writeln(fd, "frx%d" % (points - 1))
+    writeln(fd, 0 if transmit else 1)
+    writeln(fd, int(start / prescaler))
+    writeln(fd, 0)
+    writeln(fd, points)
+    writeln(fd, int(steps / prescaler))
 
     # read scan
     data = []
     for i in range(points):
         progress(i, points - 1, transmit)
-        z = read_sample(fd, index[i])
-        data.append((z - zo) / (z + zo))
+        c = read_sample(fd)
+        data.append(c / max_value)
 
-    # end scan
-    line = readln(fd)  # 'OK'
-    return pd.Series(data, index=index)
+    # return dataframe
+    return pd.Series(data, index=index, dtype=np.complex)
 
  
 class Driver():
@@ -73,17 +83,22 @@ class Driver():
         baudrate = int(options.get('baudrate', default_baudrate))
         self.fd = Serial(port, baudrate)
 
+    def close(self):
+        self.fd.close()
+
     def reset(self):
         fd = self.fd
         fd.close()
         fd.open()
 
-    def close(self):
-        self.fd.close()
+    def voltage(self):
+        fd = self.fd
+        writeln(fd, 8)
+        return read_short(fd) * 6 / 1024
 
     def version(self):
         fd = self.fd
-        writeln(fd, "ver")
+        writeln(fd, 9)
         return readln(fd)
 
     def temperature(self):
@@ -93,10 +108,11 @@ class Driver():
         return gamma(self.fd, index)
 
     def transmission(self, index, reverse=None):
-        pass
+        return gamma(self.fd, index, transmit=True)
 
     ###
 
     def sweep(self, index, reverse=None):
         gamma(self.fd, index)
+
 

@@ -4,7 +4,6 @@ import numpy as np
 
 min_freq = 1
 max_freq = int(3e9)
-max_points = 100000
 default_points = 1000
 
 
@@ -19,7 +18,6 @@ def gamma(index):
 class Driver():
     max_freq = max_freq
     min_freq = min_freq
-    max_points = max_points
     default_points = default_points
 
     def __init__(self, **options):

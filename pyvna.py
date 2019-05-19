@@ -184,7 +184,7 @@ def create(start=None, stop=None, points=None, resample=None):
     step = (stop - start) // points
     if start > stop or stop > driver.max_freq or start < driver.min_freq: 
         raise ValueError("bad frequency range")
-    if points > driver.max_points or points < 1:
+    if points < 1:
         raise ValueError("bad number of points")
     if step < 1:
         raise ValueError("step size too small")
