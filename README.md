@@ -11,5 +11,6 @@ of use.
 
 The documentation is located [here in a Jupyter Notebook](README.ipynb)
 
-
+Note, Edy555 gives an enlightening discussion on how SOTL
+calibration works: https://ttrf.tk/posts/2016-11-08-calibration-process-in-python-for-nanovna/
 
